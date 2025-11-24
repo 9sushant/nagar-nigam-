@@ -1,0 +1,9 @@
+{
+  "name": "Prakriti Darpan",
+  "description": "A community-driven app to track, analyze, and visualize garbage accumulation in local areas using AI and geolocation.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
