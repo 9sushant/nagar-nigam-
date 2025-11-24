@@ -1,12 +1,14 @@
+
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowRight, Camera, MapPin, Activity } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowRight, Camera, MapPin, Activity, Edit } from 'lucide-react';
 import { getReports, seedDemoData } from '../services/storageService';
 import { GarbageReport } from '../types';
 
 const Home: React.FC = () => {
   const [recentReports, setRecentReports] = useState<GarbageReport[]>([]);
   const [stats, setStats] = useState({ total: 0, critical: 0, areas: 0 });
+  const navigate = useNavigate();
 
   useEffect(() => {
     seedDemoData(); // Ensure we have data to show on first load for better UX
@@ -71,28 +73,42 @@ const Home: React.FC = () => {
           </div>
         ) : (
           recentReports.map((report) => (
-            <div key={report.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex gap-4 items-start">
+            <div key={report.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex gap-4 items-start relative group">
               <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
                 <img src={report.imageUrl} alt="Report" className="w-full h-full object-cover" />
               </div>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 pr-8">
                 <div className="flex justify-between items-start">
                   <h3 className="font-semibold text-gray-800 truncate">{report.locationName}</h3>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                     report.severity === 'Critical' || report.severity === 'High' ? 'bg-red-100 text-red-700' : 
                     report.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
                   }`}>
                     {report.severity}
                   </span>
+                  <span className="text-xs text-gray-400">|</span>
+                  <p className="text-sm text-gray-500 flex items-center gap-1">
+                    <Activity className="w-3 h-3" /> {report.trashType}
+                  </p>
                 </div>
-                <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">
-                  <Activity className="w-3 h-3" /> {report.trashType}
-                </p>
                 <p className="text-sm text-gray-400 mt-1 truncate">{report.description}</p>
                 <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
                    <MapPin className="w-3 h-3" /> {new Date(report.timestamp).toLocaleDateString()}
                 </p>
               </div>
+              
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate(`/edit/${report.id}`);
+                }}
+                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                aria-label="Edit Report"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
             </div>
           ))
         )}

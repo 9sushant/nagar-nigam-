@@ -1,13 +1,16 @@
+
 import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
 import { getReports, clearReports } from '../services/storageService';
-import { GarbageReport, TrashType } from '../types';
-import { Trash2, AlertOctagon } from 'lucide-react';
+import { GarbageReport } from '../types';
+import { Trash2, AlertOctagon, Edit, Clock, MapPin } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const COLORS = ['#22c55e', '#eab308', '#f97316', '#ef4444', '#3b82f6', '#8b5cf6'];
 
 const Analytics: React.FC = () => {
   const [reports, setReports] = useState<GarbageReport[]>([]);
+  const navigate = useNavigate();
   
   useEffect(() => {
     setReports(getReports());
@@ -63,7 +66,7 @@ const Analytics: React.FC = () => {
         <button onClick={handleClear} className="text-xs text-red-500 hover:underline">Reset Data</button>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-2 gap-6 mb-8">
         
         {/* Main Chart: Areas with Most Garbage */}
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 col-span-1 md:col-span-2">
@@ -154,6 +157,44 @@ const Analytics: React.FC = () => {
                     </span>
                 </div>
             </div>
+        </div>
+      </div>
+
+      {/* Report History List */}
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-6 border-b border-gray-100 flex items-center gap-2">
+            <Clock className="w-5 h-5 text-gray-600" />
+            <h2 className="text-lg font-bold text-gray-800">All Reports</h2>
+        </div>
+        <div className="divide-y divide-gray-100">
+            {reports.map((report) => (
+                <div key={report.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                             <img src={report.imageUrl} alt="" className="w-full h-full object-cover" />
+                        </div>
+                        <div>
+                             <h4 className="font-semibold text-gray-800 text-sm">{report.locationName}</h4>
+                             <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                                <span className={`px-1.5 py-0.5 rounded ${
+                                    report.severity === 'Critical' || report.severity === 'High' ? 'bg-red-100 text-red-700' : 
+                                    report.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
+                                }`}>
+                                    {report.severity}
+                                </span>
+                                <span>•</span>
+                                <span>{new Date(report.timestamp).toLocaleDateString()}</span>
+                             </div>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={() => navigate(`/edit/${report.id}`)}
+                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full"
+                    >
+                        <Edit className="w-4 h-4" />
+                    </button>
+                </div>
+            ))}
         </div>
       </div>
     </div>

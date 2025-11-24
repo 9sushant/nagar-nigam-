@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Report from './pages/Report';
 import Analytics from './pages/Analytics';
+import EditReport from './pages/EditReport';
 
 const App: React.FC = () => {
   return (
@@ -14,6 +15,7 @@ const App: React.FC = () => {
           <Route path="/" element={<Home />} />
           <Route path="/report" element={<Report />} />
           <Route path="/analytics" element={<Analytics />} />
+          <Route path="/edit/:id" element={<EditReport />} />
         </Routes>
       </div>
     </HashRouter>

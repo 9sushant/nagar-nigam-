@@ -12,10 +12,30 @@ export const getReports = (): GarbageReport[] => {
   }
 };
 
+export const getReportById = (id: string): GarbageReport | undefined => {
+  const reports = getReports();
+  return reports.find(r => r.id === id);
+};
+
 export const saveReport = (report: GarbageReport): void => {
   const reports = getReports();
   const newReports = [report, ...reports];
   localStorage.setItem(STORAGE_KEY, JSON.stringify(newReports));
+};
+
+export const updateReport = (updatedReport: GarbageReport): void => {
+  const reports = getReports();
+  const index = reports.findIndex(r => r.id === updatedReport.id);
+  if (index !== -1) {
+    reports[index] = updatedReport;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(reports));
+  }
+};
+
+export const deleteReport = (id: string): void => {
+    const reports = getReports();
+    const newReports = reports.filter(r => r.id !== id);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newReports));
 };
 
 export const clearReports = (): void => {
