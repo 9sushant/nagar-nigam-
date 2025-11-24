@@ -1,3 +1,4 @@
+
 import { GarbageReport, TrashType, TrashSeverity } from '../types';
 
 const STORAGE_KEY = 'prakriti_darpan_reports_v1';
@@ -18,9 +19,38 @@ export const getReportById = (id: string): GarbageReport | undefined => {
 };
 
 export const saveReport = (report: GarbageReport): void => {
-  const reports = getReports();
-  const newReports = [report, ...reports];
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(newReports));
+  try {
+    const reports = getReports();
+    const newReports = [report, ...reports];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newReports));
+  } catch (e: any) {
+    // Handle Storage Quota Exceeded
+    if (e.name === 'QuotaExceededError' || e.code === 22) {
+      console.warn("Storage full. Attempting to free space by removing old records.");
+      
+      const reports = getReports();
+      // If we have records, try to remove the oldest ones (last in the array)
+      if (reports.length > 0) {
+        // Keep the newest 75% or at least remove 1
+        const keepCount = Math.max(Math.floor(reports.length * 0.75), 0);
+        // Ensure we actually remove something if keepCount equals length (e.g. length 1)
+        const effectiveKeepCount = keepCount === reports.length ? reports.length - 1 : keepCount;
+        
+        const trimmedReports = reports.slice(0, effectiveKeepCount);
+        const finalReports = [report, ...trimmedReports];
+        
+        try {
+           localStorage.setItem(STORAGE_KEY, JSON.stringify(finalReports));
+           return; // Success after trim
+        } catch (retryError) {
+           console.error("Still failed to save after trimming", retryError);
+           throw new Error("Storage is full and could not be cleared.");
+        }
+      }
+    }
+    console.error("Failed to save report", e);
+    throw e;
+  }
 };
 
 export const updateReport = (updatedReport: GarbageReport): void => {
@@ -79,39 +109,6 @@ export const seedDemoData = (): void => {
       trashType: TrashType.PAPER,
       severity: TrashSeverity.LOW,
       description: 'Newspapers left on the grass.'
-    },
-    {
-      id: '4',
-      timestamp: Date.now() - 200000,
-      imageUrl: 'https://picsum.photos/400/300?random=4',
-      locationName: 'Assi Ghat',
-      latitude: 25.2952,
-      longitude: 83.0063,
-      trashType: TrashType.METAL,
-      severity: TrashSeverity.MEDIUM,
-      description: 'Rusted cans near the water.'
-    },
-    {
-      id: '5',
-      timestamp: Date.now() - 100000,
-      imageUrl: 'https://picsum.photos/400/300?random=5',
-      locationName: 'Godowlia Market',
-      latitude: 25.3109,
-      longitude: 83.0107,
-      trashType: TrashType.PLASTIC,
-      severity: TrashSeverity.CRITICAL,
-      description: 'Massive pile of plastic waste.'
-    },
-    {
-      id: '6',
-      timestamp: Date.now() - 50000,
-      imageUrl: 'https://picsum.photos/400/300?random=6',
-      locationName: 'Luxa Road',
-      latitude: 25.3120,
-      longitude: 83.0050,
-      trashType: TrashType.ORGANIC,
-      severity: TrashSeverity.MEDIUM,
-      description: 'Vegetable waste scattered near the road.'
     }
   ];
 

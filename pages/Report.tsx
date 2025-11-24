@@ -1,9 +1,42 @@
+
 import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, Upload, X, MapPin, Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { analyzeImage } from '../services/geminiService';
 import { saveReport } from '../services/storageService';
 import { AnalysisResult, GarbageReport, TrashSeverity, TrashType } from '../types';
+
+// Helper to compress images before storage/analysis
+const compressImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        // Target 800px width - good balance for AI analysis and storage size
+        const MAX_WIDTH = 800; 
+        const scale = img.width > MAX_WIDTH ? MAX_WIDTH / img.width : 1;
+        
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+             resolve(event.target?.result as string);
+             return;
+        }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        // Compress to JPEG at 0.7 quality
+        resolve(canvas.toDataURL('image/jpeg', 0.7)); 
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+};
 
 const Report: React.FC = () => {
   const navigate = useNavigate();
@@ -25,48 +58,55 @@ const Report: React.FC = () => {
     }
   };
 
-  const processFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64 = reader.result as string;
-      setImagePreview(base64);
-      startAnalysis(base64);
-    };
-    reader.readAsDataURL(file);
+  const processFile = async (file: File) => {
+    setIsAnalyzing(true);
+    setError(null);
     
-    // Get geolocation
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setCoordinates({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-        },
-        () => {
-          // Ignore error, just proceed without exact coords
-          console.warn("Geolocation denied or unavailable");
-        }
-      );
+    try {
+      // 1. Compress Image first
+      const compressedBase64 = await compressImage(file);
+      setImagePreview(compressedBase64);
+
+      // 2. Get Geolocation
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setCoordinates({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            });
+          },
+          (geoError) => {
+            console.warn("Geolocation denied or unavailable", geoError);
+          }
+        );
+      }
+
+      // 3. Start AI Analysis
+      await startAnalysis(compressedBase64);
+
+    } catch (e) {
+      console.error("Error processing file:", e);
+      setError("Failed to process image. Please try again.");
+      setIsAnalyzing(false);
     }
   };
 
   const startAnalysis = async (base64: string) => {
     setIsAnalyzing(true);
-    setError(null);
     setAnalysisResult(null);
     
     try {
       const result = await analyzeImage(base64);
       
       if (!result.isGarbage) {
-        setError("Our AI didn't detect any garbage in this image. Please try another angle if this is a mistake.");
+        setError("Our AI didn't detect significant garbage in this image. Please try another angle or close-up if this is a mistake.");
       } else {
         setAnalysisResult(result);
         setLocationName(result.suggestedLocationType); // Pre-fill with suggestion
       }
     } catch (e) {
-      setError("Analysis failed. Please try again.");
+      setError("AI analysis failed. Please check your connection and try again.");
     } finally {
       setIsAnalyzing(false);
     }
@@ -87,8 +127,12 @@ const Report: React.FC = () => {
       description: analysisResult.description,
     };
 
-    saveReport(report);
-    navigate('/analytics');
+    try {
+      saveReport(report);
+      navigate('/analytics');
+    } catch (e) {
+      setError("Failed to save report. Storage might be full.");
+    }
   };
 
   const resetForm = () => {
@@ -104,13 +148,13 @@ const Report: React.FC = () => {
       <h1 className="text-2xl font-bold text-gray-800 my-6">Report Garbage</h1>
 
       {!imagePreview ? (
-        <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-green-300 rounded-3xl bg-green-50 p-8">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6">
+        <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-green-300 rounded-3xl bg-green-50 p-8 animate-in fade-in duration-500">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6 shadow-inner">
             <Camera className="w-10 h-10 text-green-600" />
           </div>
           <h2 className="text-xl font-semibold text-green-900 mb-2">Capture or Upload</h2>
           <p className="text-green-700 text-center mb-8 max-w-xs">
-            Take a photo of the waste found in your area.
+            Take a photo of waste to create a permanent record and help track pollution.
           </p>
           
           <input
@@ -124,24 +168,28 @@ const Report: React.FC = () => {
           
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="w-full max-w-xs bg-green-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+            className="w-full max-w-xs bg-green-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-green-700 hover:shadow-xl transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2"
           >
             <Camera className="w-5 h-5" />
             Take Photo
           </button>
           
-          <p className="mt-4 text-sm text-green-600">
-            or <span className="underline cursor-pointer font-semibold" onClick={() => fileInputRef.current?.click()}>upload from gallery</span>
-          </p>
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className="mt-4 text-sm text-green-600 font-medium hover:underline"
+          >
+            upload from gallery
+          </button>
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto">
           {/* Image Preview */}
-          <div className="relative rounded-2xl overflow-hidden shadow-lg mb-6 max-h-80 bg-black">
+          <div className="relative rounded-2xl overflow-hidden shadow-lg mb-6 max-h-80 bg-black group">
             <img src={imagePreview} alt="Preview" className="w-full h-full object-contain" />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
             <button 
               onClick={resetForm}
-              className="absolute top-2 right-2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 backdrop-blur-sm"
+              className="absolute top-2 right-2 bg-black/50 text-white p-2 rounded-full hover:bg-red-500 transition-colors backdrop-blur-sm pointer-events-auto"
             >
               <X className="w-5 h-5" />
             </button>
@@ -149,22 +197,29 @@ const Report: React.FC = () => {
 
           {/* Loading State */}
           {isAnalyzing && (
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-green-100 flex flex-col items-center justify-center py-12">
-              <Loader2 className="w-10 h-10 text-green-500 animate-spin mb-4" />
-              <p className="text-gray-600 font-medium animate-pulse">Analyzing image with AI...</p>
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-green-100 flex flex-col items-center justify-center py-12 animate-in fade-in">
+              <div className="relative">
+                <div className="absolute inset-0 bg-green-200 rounded-full animate-ping opacity-25"></div>
+                <Loader2 className="w-12 h-12 text-green-600 animate-spin relative z-10" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-1">Analyzing Image</h3>
+              <p className="text-gray-500 text-center max-w-xs">Identifying trash type, severity, and location details...</p>
             </div>
           )}
 
           {/* Error State */}
           {!isAnalyzing && error && (
-            <div className="bg-red-50 p-6 rounded-2xl border border-red-200 text-center">
+            <div className="bg-red-50 p-6 rounded-2xl border border-red-200 text-center animate-in zoom-in-95 duration-300">
               <div className="flex justify-center mb-4">
-                <AlertTriangle className="w-10 h-10 text-red-500" />
+                <div className="bg-red-100 p-3 rounded-full">
+                    <AlertTriangle className="w-8 h-8 text-red-500" />
+                </div>
               </div>
-              <p className="text-red-700 font-medium mb-4">{error}</p>
+              <h3 className="text-red-800 font-bold mb-2">Analysis Failed</h3>
+              <p className="text-red-700 font-medium mb-6">{error}</p>
               <button 
                 onClick={resetForm}
-                className="px-6 py-2 bg-white border border-red-300 text-red-600 rounded-lg font-semibold hover:bg-red-50"
+                className="px-6 py-3 bg-white border border-red-200 text-red-600 rounded-xl font-bold hover:bg-red-50 transition-colors shadow-sm"
               >
                 Try Again
               </button>
@@ -173,21 +228,23 @@ const Report: React.FC = () => {
 
           {/* Success / Form State */}
           {!isAnalyzing && analysisResult && (
-            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500 fade-in">
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-green-100">
-                <div className="flex items-center gap-2 mb-4 text-green-700 font-semibold border-b border-gray-100 pb-2">
-                  <CheckCircle className="w-5 h-5" />
+            <div className="space-y-6 animate-in slide-in-from-bottom-8 duration-500 fade-in">
+              
+              {/* Analysis Results Card */}
+              <div className="bg-white p-5 rounded-2xl shadow-md border border-green-100">
+                <div className="flex items-center gap-2 mb-4 text-green-700 font-bold text-lg border-b border-gray-100 pb-3">
+                  <CheckCircle className="w-6 h-6 fill-green-100" />
                   Analysis Complete
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <span className="text-xs text-gray-500 uppercase font-bold">Type</span>
-                    <p className="font-medium text-gray-800">{analysisResult.trashType}</p>
+                  <div className="bg-gray-50 p-3 rounded-xl">
+                    <span className="text-xs text-gray-500 uppercase font-bold tracking-wider">Type</span>
+                    <p className="font-bold text-gray-800 text-lg">{analysisResult.trashType}</p>
                   </div>
-                  <div>
-                    <span className="text-xs text-gray-500 uppercase font-bold">Severity</span>
-                    <p className={`font-medium ${
+                  <div className="bg-gray-50 p-3 rounded-xl">
+                    <span className="text-xs text-gray-500 uppercase font-bold tracking-wider">Severity</span>
+                    <p className={`font-bold text-lg ${
                       analysisResult.severity === TrashSeverity.HIGH || analysisResult.severity === TrashSeverity.CRITICAL 
                       ? 'text-red-600' : 'text-yellow-600'
                     }`}>
@@ -195,44 +252,44 @@ const Report: React.FC = () => {
                     </p>
                   </div>
                 </div>
-                <div className="mb-2">
-                  <span className="text-xs text-gray-500 uppercase font-bold">AI Description</span>
-                  <p className="text-gray-600 text-sm mt-1 bg-gray-50 p-3 rounded-lg">{analysisResult.description}</p>
+                <div>
+                  <span className="text-xs text-gray-500 uppercase font-bold tracking-wider">AI Observation</span>
+                  <p className="text-gray-700 text-sm mt-1 italic">"{analysisResult.description}"</p>
                 </div>
               </div>
 
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-green-100">
-                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-1">
-                  <MapPin className="w-4 h-4 text-gray-400" />
-                  Where is this?
+              {/* Location Input Card */}
+              <div className="bg-white p-5 rounded-2xl shadow-md border border-green-100">
+                <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-green-600" />
+                  Tag Location
                 </label>
                 <input
                   type="text"
                   value={locationName}
                   onChange={(e) => setLocationName(e.target.value)}
-                  placeholder="e.g. Central Park, Main St, My Backyard"
-                  className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
+                  placeholder="e.g. Central Park, Main St..."
+                  className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all bg-gray-50 font-medium"
                 />
-                <p className="text-xs text-gray-400 mt-2">
-                  Help us identify the most affected areas by naming this location.
+                <p className="text-xs text-gray-400 mt-2 px-1">
+                  Name this spot to help organize your records.
                 </p>
               </div>
 
               <button
                 onClick={handleSubmit}
                 disabled={!locationName.trim()}
-                className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-colors flex items-center justify-center gap-2
+                className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all transform flex items-center justify-center gap-2
                   ${locationName.trim() 
-                    ? 'bg-green-600 text-white hover:bg-green-700' 
+                    ? 'bg-green-600 text-white hover:bg-green-700 hover:scale-[1.02]' 
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   }`}
               >
-                Submit Report
+                Save Record
               </button>
             </div>
           )}
           
-          {/* Spacer for navbar */}
           <div className="h-10"></div>
         </div>
       )}
