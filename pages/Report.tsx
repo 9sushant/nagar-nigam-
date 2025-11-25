@@ -113,7 +113,7 @@ const Report: React.FC = () => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!analysisResult || !imagePreview || !locationName) return;
 
     const report: GarbageReport = {
@@ -129,7 +129,7 @@ const Report: React.FC = () => {
     };
 
     try {
-      saveReport(report);
+      await saveReport(report);
       navigate('/analytics');
     } catch (e) {
       setError("Failed to save report. Storage might be full.");

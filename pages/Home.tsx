@@ -11,18 +11,21 @@ const Home: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    seedDemoData(); // Ensure we have data to show on first load for better UX
-    const reports = getReports();
-    setRecentReports(reports.slice(0, 3)); // Top 3 recent
+    const loadData = async () => {
+      await seedDemoData(); // Ensure we have data to show on first load for better UX
+      const reports = await getReports();
+      setRecentReports(reports.slice(0, 3)); // Top 3 recent
 
-    const uniqueAreas = new Set(reports.map(r => r.locationName)).size;
-    const criticalCount = reports.filter(r => r.severity === 'Critical' || r.severity === 'High').length;
+      const uniqueAreas = new Set(reports.map(r => r.locationName)).size;
+      const criticalCount = reports.filter(r => r.severity === 'Critical' || r.severity === 'High').length;
 
-    setStats({
-      total: reports.length,
-      critical: criticalCount,
-      areas: uniqueAreas
-    });
+      setStats({
+        total: reports.length,
+        critical: criticalCount,
+        areas: uniqueAreas
+      });
+    };
+    loadData();
   }, []);
 
   return (

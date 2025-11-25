@@ -18,23 +18,26 @@ const EditReport: React.FC = () => {
   const [description, setDescription] = useState('');
 
   useEffect(() => {
-    if (id) {
-      const foundReport = getReportById(id);
-      if (foundReport) {
-        setReport(foundReport);
-        setLocationName(foundReport.locationName);
-        setTrashType(foundReport.trashType);
-        setSeverity(foundReport.severity);
-        setDescription(foundReport.description);
-      } else {
-        // Handle not found
-        navigate('/');
+    const load = async () => {
+      if (id) {
+        const foundReport = await getReportById(id);
+        if (foundReport) {
+          setReport(foundReport);
+          setLocationName(foundReport.locationName);
+          setTrashType(foundReport.trashType);
+          setSeverity(foundReport.severity);
+          setDescription(foundReport.description);
+        } else {
+          // Handle not found
+          navigate('/');
+        }
+        setLoading(false);
       }
-      setLoading(false);
-    }
+    };
+    load();
   }, [id, navigate]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!report) return;
 
     const updatedReport: GarbageReport = {
@@ -45,13 +48,13 @@ const EditReport: React.FC = () => {
       description
     };
 
-    updateReport(updatedReport);
+    await updateReport(updatedReport);
     navigate(-1); // Go back
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (id && confirm('Are you sure you want to delete this report? This action cannot be undone.')) {
-      deleteReport(id);
+      await deleteReport(id);
       navigate('/');
     }
   };

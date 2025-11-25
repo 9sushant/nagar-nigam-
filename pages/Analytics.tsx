@@ -13,7 +13,10 @@ const Analytics: React.FC = () => {
   const navigate = useNavigate();
   
   useEffect(() => {
-    setReports(getReports());
+    const load = async () => {
+      setReports(await getReports());
+    };
+    load();
   }, []);
 
   // 1. Process Data for "Garbage by Area" Chart
@@ -40,9 +43,9 @@ const Analytics: React.FC = () => {
     value: typeDataMap[type]
   }));
 
-  const handleClear = () => {
+  const handleClear = async () => {
     if(confirm("Are you sure you want to delete all records? This cannot be undone.")) {
-        clearReports();
+        await clearReports();
         setReports([]);
     }
   }
