@@ -9,6 +9,7 @@ export default defineConfig(({ mode }) => {
     define: {
       // This ensures process.env.API_KEY works in your client-side code
       'process.env.API_KEY': JSON.stringify(env.API_KEY),
+      'import.meta.env.VITE_API_KEY': JSON.stringify(env.API_KEY),
     },
   };
 });
