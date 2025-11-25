@@ -7,6 +7,7 @@ import Analytics from './pages/Analytics';
 import EditReport from './pages/EditReport';
 
 const App: React.FC = () => {
+  console.log("App rendering");
   return (
     <HashRouter>
       <div className="min-h-screen text-gray-900 font-sans">

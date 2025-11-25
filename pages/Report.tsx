@@ -3,6 +3,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, Upload, X, MapPin, Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { analyzeImage } from '../services/geminiService';
+// const analyzeImage = async (base64: string) => { return { isGarbage: false, trashType: 'Unknown', severity: 'Low', description: 'Mock', suggestedLocationType: 'Mock' } as any; };
 import { saveReport } from '../services/storageService';
 import { AnalysisResult, GarbageReport, TrashSeverity, TrashType } from '../types';
 

@@ -1,8 +1,20 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { AnalysisResult, TrashType, TrashSeverity } from "../types";
 
-// Initialize Gemini Client
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Initialize Gemini Client Lazily
+let ai: GoogleGenAI | null = null;
+
+const getAiClient = () => {
+  if (!ai) {
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+      console.warn("API_KEY is missing. AI features will not work.");
+      return null;
+    }
+    ai = new GoogleGenAI({ apiKey });
+  }
+  return ai;
+};
 
 const responseSchema: Schema = {
   type: Type.OBJECT,
@@ -47,7 +59,10 @@ export const analyzeImage = async (base64Image: string): Promise<AnalysisResult>
     // Remove header if present (e.g., "data:image/jpeg;base64,")
     const base64Data = base64Image.split(',')[1] || base64Image;
 
-    const response = await ai.models.generateContent({
+    const client = getAiClient();
+    if (!client) throw new Error("API Key missing");
+
+    const response = await client.models.generateContent({
       model: "gemini-2.5-flash",
       contents: {
         parts: [
