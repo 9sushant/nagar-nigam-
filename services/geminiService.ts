@@ -64,7 +64,7 @@ export const analyzeImage = async (base64Image: string): Promise<AnalysisResult>
     if (!client) throw new Error("API Key missing");
 
     const response = await client.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-1.5-flash-latest",
       contents: {
         parts: [
           {
