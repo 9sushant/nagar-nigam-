@@ -9,6 +9,8 @@ export default defineConfig(({ mode }) => {
     define: {
       'process.env.API_KEY': JSON.stringify(env.API_KEY || "AIzaSyCPWMJCJkslIChcYgm8TLgkb_3XH4ZjfFA"),
       'import.meta.env.VITE_API_KEY': JSON.stringify(env.API_KEY || "AIzaSyCPWMJCJkslIChcYgm8TLgkb_3XH4ZjfFA"),
+      'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL),
+      'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY),
     },
   };
 });
