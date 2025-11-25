@@ -6,7 +6,7 @@ let ai: GoogleGenAI | null = null;
 
 const getAiClient = () => {
   if (!ai) {
-    const apiKey = process.env.API_KEY || import.meta.env.VITE_API_KEY;
+    const apiKey = process.env.API_KEY || (import.meta as any).env.VITE_API_KEY;
     if (!apiKey) {
       console.warn("API_KEY is missing. AI features will not work.");
       return null;
