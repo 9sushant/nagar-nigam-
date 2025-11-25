@@ -63,7 +63,7 @@ export const analyzeImage = async (base64Image: string): Promise<AnalysisResult>
     if (!client) throw new Error("API Key missing");
 
     const response = await client.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.0-flash",
       contents: {
         parts: [
           {
@@ -73,7 +73,7 @@ export const analyzeImage = async (base64Image: string): Promise<AnalysisResult>
             }
           },
           {
-            text: "Analyze this image for garbage tracking purposes. Identify if there is garbage, what kind, how severe it is, and describe it."
+            text: "Analyze this image. Does it contain any garbage, trash, litter, or waste? Even if it's a small amount, mark isGarbage as true. Identify the type, severity, and describe it."
           }
         ]
       },
