@@ -63,26 +63,39 @@ export const analyzeImage = async (base64Image: string): Promise<AnalysisResult>
     const client = getAiClient();
     if (!client) throw new Error("API Key missing");
 
-    const response = await client.models.generateContent({
-      model: "gemini-2.0-flash-exp",
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              mimeType: "image/jpeg",
-              data: base64Data
-            }
+    const generateWithRetry = async (retries = 3, delay = 2000): Promise<any> => {
+      try {
+        return await client.models.generateContent({
+          model: "gemini-2.0-flash-exp",
+          contents: {
+            parts: [
+              {
+                inlineData: {
+                  mimeType: "image/jpeg",
+                  data: base64Data
+                }
+              },
+              {
+                text: "Analyze this image. Does it contain any garbage, trash, litter, or waste? Even if it's a small amount, mark isGarbage as true. Identify the type, severity, and describe it."
+              }
+            ]
           },
-          {
-            text: "Analyze this image. Does it contain any garbage, trash, litter, or waste? Even if it's a small amount, mark isGarbage as true. Identify the type, severity, and describe it."
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: responseSchema,
           }
-        ]
-      },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: responseSchema,
+        });
+      } catch (error: any) {
+        if (retries > 0 && (error?.status === 429 || error?.message?.includes('429'))) {
+          console.warn(`Rate limited. Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return generateWithRetry(retries - 1, delay * 2);
+        }
+        throw error;
       }
-    });
+    };
+
+    const response = await generateWithRetry();
 
     const text = response.text;
     console.log("Gemini Raw Response:", text);
