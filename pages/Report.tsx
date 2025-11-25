@@ -101,7 +101,7 @@ const Report: React.FC = () => {
       const result = await analyzeImage(base64);
       
       if (!result.isGarbage) {
-        setError("Our AI didn't detect significant garbage in this image. Please try another angle or close-up if this is a mistake.");
+        setError(`Our AI didn't detect significant garbage. (AI said: ${result.description})`);
       } else {
         setAnalysisResult(result);
         setLocationName(result.suggestedLocationType); // Pre-fill with suggestion

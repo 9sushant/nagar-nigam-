@@ -11,6 +11,7 @@ const getAiClient = () => {
       console.warn("API_KEY is missing. AI features will not work.");
       return null;
     }
+    console.log("Initializing Gemini with API Key: ", apiKey.substring(0, 5) + "...");
     ai = new GoogleGenAI({ apiKey });
   }
   return ai;
@@ -90,15 +91,8 @@ export const analyzeImage = async (base64Image: string): Promise<AnalysisResult>
     const result = JSON.parse(text) as AnalysisResult;
     return result;
 
-  } catch (error) {
+    } catch (error) {
     console.error("Error analyzing image with Gemini:", error);
-    // Fallback/Error state
-    return {
-      isGarbage: false,
-      trashType: TrashType.UNKNOWN,
-      severity: TrashSeverity.LOW,
-      description: "Failed to analyze image. Please try again.",
-      suggestedLocationType: "Unknown"
-    };
+    throw error; // Re-throw to let the UI handle the error state
   }
 };
